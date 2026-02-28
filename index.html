@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KARAN | Galactic Portfolio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@700&family=Space+Grotesk:wght@300;700&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; background: #000; font-family: 'Space Grotesk', sans-serif; color: white; overflow: hidden; }
+        canvas { position: fixed; top: 0; left: 0; z-index: 1; cursor: grab; }
+        canvas:active { cursor: grabbing; }
+        
+        .ui-overlay { position: fixed; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 2rem; }
+        .interactive { pointer-events: auto; }
+        
+        #entry-overlay, #warp-overlay {
+            position: fixed; inset: 0; z-index: 100; background: #000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 2s ease-in-out;
+        }
+        
+        #warp-overlay { z-index: 95; opacity: 0; pointer-events: none; background: #000; }
+        
+        .hero-title { font-family: 'Syncopate', sans-serif; font-size: clamp(1.5rem, 6vw, 4rem); line-height: 0.8; opacity: 0.9; }
+        .masala-badge { background: linear-gradient(90deg, #f59e0b, #ef4444); padding: 4px 12px; border-radius: 4px; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px; }
+        
+        .hint-text { font-size: 0.7rem; letter-spacing: 3px; text-transform: uppercase; opacity: 0.4; }
+        video { display: none; visibility: hidden; }
+
+        #focus-mask {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            z-index: 5; pointer-events: none; opacity: 0; transition: opacity 0.8s ease;
+        }
+
+        #iframe-overlay {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85vw;
+            max-width: 1200px;
+            aspect-ratio: 16/9;
+            z-index: 20;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+            background: #000;
+            box-shadow: 0 0 100px rgba(245, 158, 11, 0.4);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        #iframe-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .loader-container { width: 300px; margin-top: 2rem; background: rgba(255,255,255,0.1); height: 1px; overflow: hidden; }
+        .loader-bar { width: 0%; height: 100%; background: #f59e0b; box-shadow: 0 0 15px #f59e0b; }
+    </style>
+</head>
+<body>
+
+    <div id="focus-mask"></div>
+    <div id="warp-overlay"></div>
+    <div id="iframe-overlay"></div>
+
+    <div id="entry-overlay">
+        <h1 class="hero-title mb-2 text-center">KARAN</h1>
+        <p class="text-sm tracking-[0.5em] font-light opacity-60 uppercase">Cinematic Galaxy</p>
+        <div class="loader-container">
+            <div class="loader-bar" id="loader-line"></div>
+        </div>
+        <p class="mt-8 hint-text italic text-amber-500" id="status-text">Traversing the Milky Way...</p>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <div class="ui-overlay">
+        <header class="flex justify-between items-start">
+            <div class="hero-title">KARAN</div>
+            <div class="interactive flex flex-col items-end gap-3">
+                <span id="world-tag" class="masala-badge">Video Universe</span>
+                <div class="text-[10px] tracking-[0.3em] uppercase opacity-50">Unified Hub V28.2</div>
+            </div>
+        </header>
+
+        <footer class="flex justify-between items-end">
+            <div class="max-w-xs">
+                <p class="text-[10px] uppercase tracking-[0.2em] opacity-40 mb-1">Cinematic Portfolio</p>
+                <p class="text-lg font-bold">The <span class="text-amber-500">Sonic</span> Core</p>
+            </div>
+            <button class="interactive border border-white/20 hover:bg-white hover:text-black px-6 py-3 text-xs transition-all uppercase font-bold tracking-widest">Connect</button>
+        </footer>
+    </div>
+
+    <script>
+        let scene, camera, renderer, worldGroup, portals = [];
+        let galaxySpiral, travelSystems = [];
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        let intersected = null;
+        let currentWorld = 'VIDEOS';
+        let isWarping = false;
+        let introPlaying = true;
+        let audioUnlocked = false;
+        
+        let isDragging = false;
+        let targetRotationX = 0, targetRotationY = 0;
+        let currentRotationX = 0, currentRotationY = 0;
+        
+        let hoverTimer = null;
+        let currentHoverObject = null;
+
+        let zoomZ = 8000; 
+        const finalZoomY = 650; 
+        const finalZoomZ = 400; 
+        const maxZoomOut = 2000;
+
+        let singularObjects = [];
+        let interactiveList = []; 
+        
+        // Target Video Information
+        const YOUTUBE_ID = '_FQmB4SIT-k';
+        // Changed mute=1 to mute=0 for unmuted audio-visual experience
+        const YOUTUBE_IFRAME_SRC = `https://www.youtube.com/embed/${YOUTUBE_ID}?autoplay=1&mute=0&modestbranding=1&rel=0&controls=1&iv_load_policy=3&fs=1`;
+        const YOUTUBE_THUMBNAIL = `https://img.youtube.com/vi/${YOUTUBE_ID}/maxresdefault.jpg`;
+
+        const init = () => {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 15000);
+            camera.position.set(400, 600, zoomZ); 
+            camera.lookAt(0,0,0);
+
+            renderer = new THREE.WebGLRenderer({ 
+                canvas: document.getElementById('canvas'), 
+                antialias: true, 
+                powerPreference: "high-performance",
+                precision: "mediump"
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            worldGroup = new THREE.Group();
+            scene.add(worldGroup);
+
+            setupGalaxyStructure(); 
+            setupTravelPathSystems(); 
+            setupStaticBackground(); 
+            setupVideoWorld(); 
+
+            // Gesture to unlock audio context for unmuted playback
+            const unlockAudio = () => {
+                if(audioUnlocked) return;
+                audioUnlocked = true;
+                window.removeEventListener('mousedown', unlockAudio);
+                window.removeEventListener('touchstart', unlockAudio);
+                window.removeEventListener('keydown', unlockAudio);
+            };
+            window.addEventListener('mousedown', unlockAudio);
+            window.addEventListener('touchstart', unlockAudio);
+            window.addEventListener('keydown', unlockAudio);
+
+            window.addEventListener('mousedown', () => isDragging = true);
+            window.addEventListener('mouseup', () => isDragging = false);
+            window.addEventListener('mousemove', onMouseMove);
+            
+            window.addEventListener('wheel', (e) => {
+                if (intersected || isWarping || introPlaying) return;
+                zoomZ += e.deltaY * 0.6;
+                zoomZ = Math.max(400, Math.min(maxZoomOut, zoomZ));
+            });
+            
+            window.addEventListener('resize', onWindowResize);
+            
+            startCinematicJourney();
+            animate();
+        };
+
+        const setupGalaxyStructure = () => {
+            const galaxyGeom = new THREE.BufferGeometry();
+            const pointsCount = 35000; 
+            const positions = new Float32Array(pointsCount * 3);
+            const colors = new Float32Array(pointsCount * 3);
+            for (let i = 0; i < pointsCount; i++) {
+                const i3 = i * 3;
+                const radius = Math.random() * 1200;
+                const spinAngle = radius * 0.12;
+                const branchAngle = (i % 3) * ((Math.PI * 2) / 3);
+                const randomX = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 0.4 * radius;
+                const randomY = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 0.4 * radius;
+                const randomZ = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 0.4 * radius;
+                positions[i3] = Math.cos(branchAngle + spinAngle) * radius + randomX;
+                positions[i3 + 1] = randomY;
+                positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+                const mixedColor = new THREE.Color(i % 2 === 0 ? '#ff9933' : '#3399ff');
+                colors[i3] = mixedColor.r;
+                colors[i3 + 1] = mixedColor.g;
+                colors[i3 + 2] = mixedColor.b;
+            }
+            galaxyGeom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            galaxyGeom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            galaxySpiral = new THREE.Points(galaxyGeom, new THREE.PointsMaterial({
+                size: 0.35, vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, opacity: 0.35 
+            }));
+            worldGroup.add(galaxySpiral);
+        };
+
+        const setupTravelPathSystems = () => {
+            const systemCount = 10;
+            for(let i=0; i < systemCount; i++) {
+                const system = new THREE.Group();
+                const sun = new THREE.Mesh(new THREE.SphereGeometry(12, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffaa00 }));
+                system.add(sun);
+                const xSide = (i % 2 === 0 ? 1 : -1) * 600;
+                const zPos = 1200 + (i * 500); 
+                system.position.set(xSide, 0, zPos);
+                scene.add(system);
+                travelSystems.push(system);
+            }
+        };
+
+        const setupStaticBackground = () => {
+            const starGeom = new THREE.BufferGeometry();
+            const starsPos = new Float32Array(8000 * 3); 
+            for(let i=0; i < 8000 * 3; i++) starsPos[i] = (Math.random() - 0.5) * 15000;
+            starGeom.setAttribute('position', new THREE.BufferAttribute(starsPos, 3));
+            scene.add(new THREE.Points(starGeom, new THREE.PointsMaterial({ color: 0xffffff, size: 0.6, transparent: true, opacity: 0.15 })));
+        };
+
+        const startCinematicJourney = () => {
+            const tl = gsap.timeline();
+            tl.to("#loader-line", { width: "100%", duration: 2, ease: "power1.inOut" });
+            tl.to(camera.position, {
+                x: 0, y: finalZoomY, z: finalZoomZ,
+                duration: 8,
+                ease: "expo.inOut",
+                onStart: () => {
+                    document.getElementById('entry-overlay').style.opacity = '0';
+                },
+                onUpdate: () => {
+                    const progress = tl.progress();
+                    if(progress < 0.75) camera.fov = 60 + (progress * 60);
+                    else camera.fov = 120 - ((progress-0.75) * 240);
+                    camera.rotation.z = progress * Math.PI * 2;
+                    camera.lookAt(0, 0, 0);
+                    camera.updateProjectionMatrix();
+                    zoomZ = camera.position.length();
+                },
+                onComplete: () => {
+                    introPlaying = false;
+                    document.getElementById('entry-overlay').style.display = 'none';
+                    travelSystems.forEach((s) => scene.remove(s));
+                    gsap.to(camera.rotation, { z: 0, duration: 1.5 });
+                }
+            }, "-=0.1");
+        };
+
+        const setupVideoWorld = () => {
+            clearWorld();
+            currentWorld = 'VIDEOS';
+            document.getElementById('world-tag').innerText = "Video Universe";
+            
+            createSingularVoid(0, 0, -750, 0x000000, 0xffaa00, true);
+            
+            for(let i=0; i < 35; i++) {
+                const phi = Math.acos(-1 + (2 * i) / 35);
+                const theta = Math.sqrt(35 * Math.PI) * phi;
+                const r = 260 + Math.random() * 80;
+                const px = r * Math.cos(theta) * Math.sin(phi);
+                const py = r * Math.sin(theta) * Math.sin(phi);
+                const pz = r * Math.cos(phi);
+                createPortal(YOUTUBE_IFRAME_SRC, px, py, pz, false, true);
+            }
+            updateInteractiveList();
+        };
+
+        const setupImageWorld = () => {
+            clearWorld();
+            currentWorld = 'IMAGES';
+            document.getElementById('world-tag').innerText = "Image Realm";
+            createSingularVoid(550, 350, -200, 0xffffff, 0x00ffff, false);
+            const imageUrls = ['https://picsum.photos/id/10/800/450','https://picsum.photos/id/20/800/450','https://picsum.photos/id/30/800/450','https://picsum.photos/id/40/800/450'];
+            for(let i=0; i < 35; i++) {
+                const phi = Math.acos(-1 + (2 * i) / 35);
+                const theta = Math.sqrt(35 * Math.PI) * phi;
+                const r = 280 + Math.random() * 100;
+                const px = r * Math.cos(theta) * Math.sin(phi);
+                const py = r * Math.sin(theta) * Math.sin(phi);
+                const pz = r * Math.cos(phi);
+                createPortal(imageUrls[i % 4], px, py, pz, false, false);
+            }
+            updateInteractiveList();
+        };
+
+        const clearWorld = () => {
+            portals.forEach(p => {
+                p.children.forEach(child => {
+                    if(child.geometry) child.geometry.dispose();
+                    if(child.material) {
+                        if(child.material.map) child.material.map.dispose();
+                        child.material.dispose();
+                    }
+                });
+            });
+            singularObjects = []; portals = []; interactiveList = [];
+            const toRemove = [];
+            worldGroup.children.forEach(child => { if (child !== galaxySpiral) toRemove.push(child); });
+            toRemove.forEach(c => worldGroup.remove(c));
+            document.getElementById('iframe-overlay').classList.remove('active');
+            document.getElementById('iframe-overlay').innerHTML = '';
+        };
+
+        const updateInteractiveList = () => { interactiveList = [...singularObjects, ...portals]; };
+
+        const createSingularVoid = (x, y, z, coreColor, diskColor, isBlackHole) => {
+            const group = new THREE.Group();
+            const core = new THREE.Mesh(new THREE.SphereGeometry(18, 32, 32), new THREE.MeshBasicMaterial({ color: coreColor }));
+            const pCount = 3000;
+            const pGeom = new THREE.BufferGeometry();
+            const pPos = new Float32Array(pCount * 3);
+            const pRadii = new Float32Array(pCount);
+            const pSpeeds = new Float32Array(pCount);
+            for(let i=0; i<pCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = isBlackHole ? 40 + Math.random() * 180 : 18 + Math.random() * 20;
+                pPos[i*3] = Math.cos(angle) * radius;
+                pPos[i*3+1] = (Math.random() - 0.5) * 5; 
+                pPos[i*3+2] = Math.sin(angle) * radius;
+                pRadii[i] = radius;
+                pSpeeds[i] = 0.3 + Math.random() * 0.7; 
+            }
+            pGeom.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+            const pMat = new THREE.PointsMaterial({ color: diskColor, size: 0.8, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending });
+            const particles = new THREE.Points(pGeom, pMat);
+            group.add(core, particles);
+            group.position.set(x, y, z);
+            group.userData = { isSingularity: true, isBlackHole, particles, pRadii, pSpeeds, originalPos: new THREE.Vector3(x,y,z) };
+            worldGroup.add(group);
+            singularObjects.push(group);
+        };
+
+        const createPortal = (source, x, y, z, isVideo, isIframe) => {
+            let texture;
+            if(isIframe) {
+                texture = new THREE.TextureLoader().load(YOUTUBE_THUMBNAIL);
+            } else { 
+                texture = new THREE.TextureLoader().load(source); 
+            }
+            
+            const group = new THREE.Group();
+            const screen = new THREE.Mesh(new THREE.PlaneGeometry(32, 18), new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, color: 0xffffff }));
+            const frame = new THREE.Mesh(new THREE.PlaneGeometry(33, 19), new THREE.MeshBasicMaterial({ color: isIframe ? 0xf59e0b : 0xffffff, transparent: true, opacity: 0.1 }));
+            frame.position.z = -0.15;
+            group.add(screen, frame);
+            group.position.set(x, y, z);
+            group.lookAt(0, 0, 0);
+            group.userData = { originalPos: new THREE.Vector3(x, y, z), originalRot: group.rotation.clone(), isPortal: true, isIframe: isIframe, iframeSrc: source };
+            worldGroup.add(group);
+            portals.push(group);
+        };
+
+        function onMouseMove(e) {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            if (isDragging && !introPlaying && !isWarping) { targetRotationY += e.movementX * 0.003; targetRotationX += e.movementY * 0.003; }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if(!introPlaying) {
+                if (!isWarping) {
+                    currentRotationX += (targetRotationX - currentRotationX) * 0.05;
+                    currentRotationY += (targetRotationY - currentRotationY) * 0.05;
+                    worldGroup.rotation.x = currentRotationX;
+                    worldGroup.rotation.y = currentRotationY;
+                }
+                const currentDist = camera.position.length();
+                camera.position.setLength(currentDist + (zoomZ - currentDist) * 0.05);
+            }
+
+            if(galaxySpiral) galaxySpiral.rotation.y += 0.0004;
+
+            singularObjects.forEach(obj => {
+                const isBH = obj.userData.isBlackHole;
+                const p = obj.userData.particles;
+                const pos = p.geometry.attributes.position.array;
+                const radii = obj.userData.pRadii;
+                const speeds = obj.userData.pSpeeds;
+                for(let i=0; i < radii.length; i++) {
+                    const angle = Math.atan2(pos[i*3+2], pos[i*3]);
+                    if(isBH) { radii[i] -= speeds[i] * 0.5; if(radii[i] < 19) radii[i] = 180 + Math.random() * 40; }
+                    else { radii[i] += speeds[i] * 0.7; if(radii[i] > 200) radii[i] = 19 + Math.random() * 10; }
+                    pos[i*3] = Math.cos(angle) * radii[i];
+                    pos[i*3+1] = (Math.random() - 0.5) * 2; 
+                    pos[i*3+2] = Math.sin(angle) * radii[i];
+                }
+                p.geometry.attributes.position.needsUpdate = true;
+            });
+            
+            if(!isWarping && !introPlaying) {
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(interactiveList, true);
+                let found = null;
+                if(intersects.length > 0) {
+                    let obj = intersects[0].object;
+                    while(obj.parent && obj.parent !== worldGroup) obj = obj.parent;
+                    found = obj;
+                }
+                
+                if (intersected) {
+                    updateFocusedPosition(intersected);
+                    const mouseDist = Math.sqrt(mouse.x*mouse.x + mouse.y*mouse.y);
+                    if((!found && mouseDist > 0.72) || (found && found !== intersected && (found.userData.isPortal || found.userData.isSingularity))) {
+                        resetPortal(intersected); intersected = null; currentHoverObject = null; clearTimeout(hoverTimer);
+                    }
+                } else if (found && (found.userData.isPortal || found.userData.isSingularity)) {
+                    if (currentHoverObject !== found) {
+                        clearTimeout(hoverTimer);
+                        currentHoverObject = found;
+                        hoverTimer = setTimeout(() => {
+                            if (currentHoverObject === found) {
+                                if(found.userData.isSingularity) warpTransition(found.userData.isBlackHole); 
+                                else { intersected = found; focusPortal(intersected); }
+                            }
+                        }, 600); 
+                    }
+                } else if (currentHoverObject !== null) {
+                    clearTimeout(hoverTimer); currentHoverObject = null;
+                }
+            }
+            renderer.render(scene, camera);
+        }
+
+        function updateFocusedPosition(p) {
+            const targetDist = 36; 
+            const cameraDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            const targetWorldPos = camera.position.clone().add(cameraDir.multiplyScalar(targetDist));
+            const targetLocalPos = worldGroup.worldToLocal(targetWorldPos);
+            const targetLocalRot = new THREE.Euler().setFromQuaternion(worldGroup.quaternion.clone().invert().multiply(camera.quaternion));
+            p.position.lerp(targetLocalPos, 0.15);
+            p.quaternion.slerp(new THREE.Quaternion().setFromEuler(targetLocalRot), 0.15);
+        }
+
+        function focusPortal(p) {
+            if(p.userData.isIframe) {
+                const overlay = document.getElementById('iframe-overlay');
+                // The iframe string already contains autoplay=1 and mute=0 in the source constant
+                overlay.innerHTML = `<iframe width="100%" height="100%" src="${p.userData.iframeSrc}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+                overlay.classList.add('active');
+            }
+            document.getElementById('focus-mask').style.opacity = '1';
+            gsap.to(p.scale, { x: 1.4, y: 1.4, z: 1.4, duration: 0.6, ease: "power2.out" });
+        }
+
+        function resetPortal(p) {
+            if(p.userData.isIframe) {
+                const overlay = document.getElementById('iframe-overlay');
+                overlay.classList.remove('active');
+                setTimeout(() => overlay.innerHTML = '', 500);
+            }
+            document.getElementById('focus-mask').style.opacity = '0';
+            gsap.to(p.position, { x: p.userData.originalPos.x, y: p.userData.originalPos.y, z: p.userData.originalPos.z, duration: 0.8, ease: "power3.out" });
+            gsap.to(p.rotation, { x: p.userData.originalRot.x, y: p.userData.originalRot.y, z: p.userData.originalRot.z, duration: 0.8 });
+            gsap.to(p.scale, { x: 1, y: 1, z: 1, duration: 0.8 });
+        }
+
+        const warpTransition = (toImageWorld) => {
+            if(isWarping) return;
+            isWarping = true;
+            intersected = null; 
+            currentHoverObject = null;
+            clearTimeout(hoverTimer);
+
+            const tl = gsap.timeline({ onComplete: () => {
+                if(toImageWorld) setupImageWorld(); else setupVideoWorld();
+                camera.position.set(0, finalZoomY, finalZoomZ);
+                camera.lookAt(0,0,0);
+                zoomZ = camera.position.length();
+                targetRotationX = 0; targetRotationY = 0; currentRotationX = 0; currentRotationY = 0;
+                worldGroup.rotation.set(0,0,0);
+                setTimeout(() => { isWarping = false; }, 800); 
+                gsap.to("#warp-overlay", { opacity: 0, duration: 1.0, ease: "power1.inOut" });
+            }});
+
+            tl.to("#warp-overlay", { opacity: 1, duration: 0.8, ease: "power2.inOut" });
+            tl.to(camera.position, { x: 0, y: 0, z: 0, duration: 1.2, ease: "power4.in" }, 0);
+            tl.to(camera, { fov: 150, duration: 1.2, ease: "power4.in", onUpdate: () => camera.updateProjectionMatrix() }, 0);
+            tl.set(camera, { fov: 60, onUpdate: () => camera.updateProjectionMatrix() });
+        };
+
+        window.onload = init;
+    </script>
+</body>
+</html>

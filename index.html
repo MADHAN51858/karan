@@ -3,501 +3,630 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KARAN | Galactic Portfolio</title>
+    <title>Frameslab | The Internet's Coolest Storytelling Company</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@700&family=Space+Grotesk:wght@300;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; background: #000; font-family: 'Space Grotesk', sans-serif; color: white; overflow: hidden; }
-        canvas { position: fixed; top: 0; left: 0; z-index: 1; cursor: grab; }
-        canvas:active { cursor: grabbing; }
-        
-        .ui-overlay { position: fixed; inset: 0; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 2rem; }
-        .interactive { pointer-events: auto; }
-        
-        #entry-overlay, #warp-overlay {
-            position: fixed; inset: 0; z-index: 100; background: #000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 2s ease-in-out;
-        }
-        
-        #warp-overlay { z-index: 95; opacity: 0; pointer-events: none; background: #000; }
-        
-        .hero-title { font-family: 'Syncopate', sans-serif; font-size: clamp(1.5rem, 6vw, 4rem); line-height: 0.8; opacity: 0.9; }
-        .masala-badge { background: linear-gradient(90deg, #f59e0b, #ef4444); padding: 4px 12px; border-radius: 4px; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px; }
-        
-        .hint-text { font-size: 0.7rem; letter-spacing: 3px; text-transform: uppercase; opacity: 0.4; }
-        video { display: none; visibility: hidden; }
-
-        #focus-mask {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-            z-index: 5; pointer-events: none; opacity: 0; transition: opacity 0.8s ease;
+        :root {
+            --neon-green: #00ff66;  
+            --dark-bg: #030703;
+            --scanline-opacity: 0.15;
         }
 
-        #iframe-overlay {
+        body {
+            background-color: var(--dark-bg);
+            color: white;
+            font-family: 'JetBrains+Mono', monospace;
+            overflow-x: hidden;
+            margin: 0;
+        }
+
+        .serif-font {
+            font-family: 'Playfair Display', serif;
+        }
+
+        /* Scanline Effect */
+        body::before {
+            content: " ";
+            display: block;
             position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 9999;
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                to bottom,
+                transparent 50%,
+                rgba(0, 255, 102, 0.03) 50%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        /* Glowing Text */
+        .glow-text {
+            text-shadow: 0 0 10px rgba(0, 255, 102, 0.4), 0 0 20px rgba(0, 255, 102, 0.2);
+        }
+
+        /* TV Styling */
+        .tv-frame {
+            position: relative;
+            background: transparent;
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
+            overflow: visible;
+            isolation: isolate;
+            transition: transform 0.3s ease;
+        }
+
+        .tv-frame::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: url('assets/tv.avif') center center / 100% 100% no-repeat;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .tv-frame:hover {
+            transform: scale(1.05) translateY(-5px);
+            z-index: 40;
+        }
+
+        .tv-screen {
+            position: absolute;
+            inset: 12% 10% 15% 10%;
+            background: #000;
+            overflow: hidden;
+            border-radius: 10px;
+            z-index: 1;
+        }
+
+        .tv-screen::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.4) 100%);
+            pointer-events: none;
+        }
+
+        /* Animations */
+        @keyframes flicker {
+            0% { opacity: 0.97; }
+            5% { opacity: 0.92; }
+            10% { opacity: 0.98; }
+            15% { opacity: 0.94; }
+            20% { opacity: 0.99; }
+            25% { opacity: 0.91; }
+            100% { opacity: 1; }
+        }
+
+        .btn-neon {
+            background-color: var(--neon-green);
+            color: black;
+            box-shadow: 0 0 15px var(--neon-green);
+            transition: all 0.3s ease;
+        }
+
+        .btn-neon:hover {
+            box-shadow: 0 0 30px var(--neon-green);
+            transform: translateY(-2px);
+        }
+
+        /* Grid Layout for TVs */
+        .tv-container {
+            position: relative;
+            width: 100%;
+            height: 520px;
+            margin: 0 auto;
+        }
+
+        .tv-stack {
+            position: relative;
+            width: min(100%, 1180px);
+            height: 100%;
+            margin: 0 auto;
+        }
+
+        .tv-slot {
+            position: absolute;
+            bottom: 0;
+            transition: transform 0.3s ease;
+        }
+
+        .tv-slot:hover {
+            transform: translateY(-8px) scale(1.03);
+            z-index: 50;
+        }
+
+        .tv-slot--tiny {
+            width: 180px;
+            height: 132px;
+        }
+
+        .tv-slot--small {
+            width: 240px;
+            height: 176px;
+        }
+
+        .tv-slot--medium {
+            width: 320px;
+            height: 236px;
+        }
+
+        .tv-slot--large {
+            width: 460px;
+            height: 320px;
+        }
+
+        .tv-slot--hero-left-one { left: 0%; bottom: 8%; z-index: 16; transform: rotate(-1deg); }
+        .tv-slot--hero-left-two { left: 14%; bottom: 12%; z-index: 20; transform: rotate(1deg); }
+        .tv-slot--hero-center { left: 31%; bottom: 0; z-index: 28; }
+        .tv-slot--hero-right-two { left: 58%; bottom: 12%; z-index: 20; transform: rotate(-1deg); }
+        .tv-slot--hero-right-one { left: 78%; bottom: 8%; z-index: 16; transform: rotate(1deg); }
+        .tv-slot--hero-top-left { left: 26%; top: 10%; bottom: auto; z-index: 24; transform: rotate(-1deg); }
+        .tv-slot--hero-top-right { left: 65%; top: 10%; bottom: auto; z-index: 24; transform: rotate(1deg); }
+
+        .tv-slot--footer-left-one { left: 0%; bottom: 8%; z-index: 16; transform: rotate(1deg); }
+        .tv-slot--footer-left-two { left: 14%; bottom: 12%; z-index: 20; transform: rotate(-1deg); }
+        .tv-slot--footer-center { left: 31%; bottom: 0; z-index: 28; }
+        .tv-slot--footer-right-two { left: 58%; bottom: 12%; z-index: 20; transform: rotate(1deg); }
+        .tv-slot--footer-right-one { left: 78%; bottom: 8%; z-index: 16; transform: rotate(-1deg); }
+        .tv-slot--footer-top-left { left: 26%; top: 10%; bottom: auto; z-index: 24; transform: rotate(-1deg); }
+        .tv-slot--footer-top-right { left: 65%; top: 10%; bottom: auto; z-index: 24; transform: rotate(1deg); }
+
+        .tv-slot .tv-frame {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ASCII Background */
+        .ascii-bg {
+            position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 85vw;
-            max-width: 1200px;
-            aspect-ratio: 16/9;
-            z-index: 20;
-            opacity: 0;
+            font-size: 8px;
+            line-height: 1;
+            opacity: 0.1;
+            white-space: pre;
             pointer-events: none;
-            transition: opacity 0.5s ease;
-            background: #000;
-            box-shadow: 0 0 100px rgba(245, 158, 11, 0.4);
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        #iframe-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
+            color: var(--neon-green);
+            z-index: 0;
+            text-align: center;
         }
 
-        .loader-container { width: 300px; margin-top: 2rem; background: rgba(255,255,255,0.1); height: 1px; overflow: hidden; }
-        .loader-bar { width: 0%; height: 100%; background: #f59e0b; box-shadow: 0 0 15px #f59e0b; }
+        /* Twitter Card Styling */
+        .x-card {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 16px;
+            max-width: 350px;
+            transition: border-color 0.3s ease;
+        }
+
+        /* Protocol Card */
+        .protocol-card {
+            background: #14161a;
+            border: 1px solid #1f2228;
+            border-radius: 8px;
+            padding: 24px;
+            flex: 1;
+            min-width: 280px;
+        }
+
+        .noice-badge {
+            background: white;
+            color: black;
+            border-radius: 20px;
+            padding: 2px 12px;
+            font-weight: bold;
+            font-size: 12px;
+            display: inline-block;
+        }
+
+        @media (max-width: 768px) {
+            .tv-container {
+                height: auto;
+            }
+
+            .tv-stack {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 12px;
+                height: auto;
+                padding-bottom: 2rem;
+            }
+
+            .tv-slot {
+                position: relative;
+                left: auto !important;
+                right: auto !important;
+                top: auto !important;
+                bottom: auto !important;
+                transform: none !important;
+            }
+
+            .tv-slot--tiny,
+            .tv-slot--small,
+            .tv-slot--medium,
+            .tv-slot--large {
+                width: min(100%, 320px);
+                height: 220px;
+            }
+        }
     </style>
 </head>
-<body>
+<body class="min-h-screen relative">
+    <div class="scanlines"></div>
 
-    <div id="focus-mask"></div>
-    <div id="warp-overlay"></div>
-    <div id="iframe-overlay"></div>
-
-    <div id="entry-overlay">
-        <h1 class="hero-title mb-2 text-center">KARAN</h1>
-        <p class="text-sm tracking-[0.5em] font-light opacity-60 uppercase">Cinematic Galaxy</p>
-        <div class="loader-container">
-            <div class="loader-bar" id="loader-line"></div>
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 w-full z-50 p-6 flex justify-between items-center bg-transparent backdrop-blur-sm">
+        <div class="flex items-center gap-2">
+            <svg class="w-6 h-6 text-[#00ff66]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 3v18M3 12h18M5 5l14 14M19 5L5 19" />
+            </svg>
+            <span class="text-xl font-bold tracking-tighter uppercase">Frameslab</span>
         </div>
-        <p class="mt-8 hint-text italic text-amber-500" id="status-text">Traversing the Milky Way...</p>
-    </div>
+        
+        <div class="hidden md:flex items-center gap-8 text-sm tracking-widest text-gray-300">
+            <a href="#work" class="flex items-center gap-2 hover:text-[#00ff66] transition-colors">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                WORK
+            </a>
+            <a href="#protocol" class="flex items-center gap-2 hover:text-[#00ff66] transition-colors">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                PROTOCOL
+            </a>
+        </div>
 
-    <canvas id="canvas"></canvas>
+        <button class="btn-neon px-6 py-2 rounded-lg font-bold text-xs flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            BOOK A CALL
+        </button>
+    </nav>
 
-    <div class="ui-overlay">
-        <header class="flex justify-between items-start">
-            <div class="hero-title">KARAN</div>
-            <div class="interactive flex flex-col items-end gap-3">
-                <span id="world-tag" class="masala-badge">Video Universe</span>
-                <div class="text-[10px] tracking-[0.3em] uppercase opacity-50">Unified Hub V28.2</div>
+    <!-- Main Content -->
+    <main class="relative">
+        
+        <!-- HERO SECTION -->
+        <section class="pt-32 px-6 flex flex-col items-center min-h-screen">
+            <div class="text-[10px] tracking-[0.3em] uppercase text-gray-500 mb-8">
+                Accepting clients for January 2026
             </div>
-        </header>
 
-        <footer class="flex justify-between items-end">
-            <div class="max-w-xs">
-                <p class="text-[10px] uppercase tracking-[0.2em] opacity-40 mb-1">Cinematic Portfolio</p>
-                <p class="text-lg font-bold">The <span class="text-amber-500">Sonic</span> Core</p>
+            <h1 class="serif-font text-5xl md:text-8xl text-center max-w-5xl italic glow-text mb-6 leading-tight">
+                The internet's coolest <br> storytelling company
+            </h1>
+
+            <div class="border border-[#00ff66]/30 bg-black/40 backdrop-blur px-6 py-2 rounded-full mb-10">
+                <p class="text-xs md:text-sm text-gray-300 tracking-tight text-center">
+                    Content is cheap, Art is memorable. You're in the right place.
+                </p>
             </div>
-            <button class="interactive border border-white/20 hover:bg-white hover:text-black px-6 py-3 text-xs transition-all uppercase font-bold tracking-widest">Connect</button>
-        </footer>
-    </div>
+
+            <button class="border border-[#00ff66] text-[#00ff66] px-8 py-3 rounded-md hover:bg-[#00ff66]/10 transition-all mb-20 text-sm tracking-widest font-bold">
+                GET IN TOUCH
+            </button>
+
+            <!-- TV Cluster Section -->
+            <div class="tv-container w-full max-w-6xl">
+                <div class="tv-stack">
+                    <!-- <div class="tv-slot tv-slot--tiny tv-slot--hero-top-left hidden sm:block">
+                        <div class="tv-frame">
+                            <div class="tv-screen">
+                                <iframe class="w-full h-full opacity-80" src="https://www.youtube.com/embed/bIw-C5d8Q60?si=BEfxjlyqU2z6KtvQ&amp;controls=0&amp;autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=bIw-C5d8Q60"  frameborder="0"></iframe>
+                            </div>
+                        </div>
+                    </div> -->
+                    <div class="tv-slot tv-slot--small tv-slot--hero-left-one hidden sm:block">
+                        <div class="tv-frame">
+                            <div class="tv-screen">
+                                <iframe class="w-full h-full opacity-80" src="https://www.youtube.com/embed/vDx3w0hehWY?si=hDp0zeMB1a5KHFiF&amp;controls=0&amp;autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=vDx3w0hehWY" frameborder="0"></iframe>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tv-slot tv-slot--medium tv-slot--hero-left-two">
+                        <div class="tv-frame">
+                            <div class="tv-screen">
+                                <iframe class="w-full h-full opacity-80" src="https://www.youtube.com/embed/_FQmB4SIT-k?si=1slQLqgkzSdE4sWS&amp;controls=0&amp;autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=_FQmB4SIT-k" frameborder="0"></iframe>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tv-slot tv-slot--large tv-slot--hero-center">
+                        <div class="tv-frame">
+                            <div class="tv-screen">
+                                <iframe class="w-full h-full" src="https://www.youtube.com/embed/zZHYQR4JWpo?si=X7JCRX90TBbi9N7-&amp;controls=0&amp;autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=zZHYQR4JWpo" allowfullscreen></iframe>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tv-slot tv-slot--medium tv-slot--hero-right-two">
+                        <div class="tv-frame">
+                            <div class="tv-screen">
+                                <iframe class="w-full h-full opacity-80" src="https://www.youtube.com/embed/2y_DvePBpQA?si=_7xCx86gwOMyUbOE&amp;controls=0&amp;autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=2y_DvePBpQA" frameborder="0"></iframe>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tv-slot tv-slot--small tv-slot--hero-right-one hidden sm:block">
+                        <div class="tv-frame">
+                            <div class="tv-screen">
+                                <iframe class="w-full h-full opacity-80" src="https://www.youtube.com/embed/bvkUz9-kmnE?si=oY_aZ7gSsmtUXQmv&amp;controls=0&amp;autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=bvkUz9-kmnE"  frameborder="0"></iframe>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- <div class="tv-slot tv-slot--tiny tv-slot--hero-top-right hidden lg:block">
+                        <div class="tv-frame">
+                            <div class="tv-screen">
+                                <iframe class="w-full h-full opacity-80"  src="https://www.youtube.com/embed/Pe-lzIsm55M?si=EBjm-Cay-Gq6L8IV&amp;controls=0&amp;autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=Pe-lzIsm55M"  frameborder="0"></iframe>
+                            </div>
+                        </div>
+                    </div> -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ART SECTION -->
+        <section id="work" class="relative py-32 px-6 flex flex-col items-center overflow-hidden">
+            <div class="ascii-bg">
+                ███████╗██████╗  █████╗ ███╗   ███╗███████╗███████╗██╗      █████╗ ██████╗ 
+                ██╔════╝██╔══██╗██╔══██╗████╗ ████║██╔════╝██╔════╝██║     ██╔══██╗██╔══██╗
+                █████╗  ██████╔╝███████║██╔████╔██║█████╗  ███████╗██║     ███████║██████╔╝
+                ██╔══╝  ██╔══██╗██╔══██║██║╚██╔╝██║██╔══╝  ╚════██║██║     ██╔══██║██╔══██╗
+                ██║     ██║  ██║██║  ██║██║ ╚═╝ ██║███████╗███████║███████╗██║  ██║██████╔╝
+                ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝╚═════╝ 
+            </div>
+
+            <div class="relative z-10 text-center space-y-4 max-w-2xl mb-16">
+                <h2 class="text-[#00ff66] font-bold text-lg md:text-xl">We create art, not content.</h2>
+                <h3 class="text-[#00ff66] font-bold text-xl md:text-2xl opacity-80 italic">Content is cheap. Art is memorable.</h3>
+                <p class="text-gray-400 text-sm md:text-lg px-4">
+                    Cinematic launch and product videos with insane storytelling that's distinct and impactful.
+                </p>
+            </div>
+
+            <div class="relative z-10 flex flex-wrap justify-center gap-6 w-full max-w-7xl px-4">
+                <div class="x-card flex flex-col gap-4">
+                    <div class="flex justify-between items-center">
+                        <div class="flex gap-3 items-center">
+                            <div class="w-10 h-10 bg-blue-700 rounded-sm"></div>
+                            <div>
+                                <div class="text-sm font-bold flex items-center gap-1">Base <svg width="12" height="12" viewBox="0 0 24 24" fill="#EAB308"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg></div>
+                                <div class="text-xs text-gray-500">@base · Follow</div>
+                            </div>
+                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                    </div>
+                    <p class="text-sm">Pay great posts. Automatically. <br><br> With @noicedotso every like, repost, reply, quote, or follow on @farcaster_xyz can send tokens you believe in to the poster. <br><br> Noice.</p>
+                    <div class="relative rounded-lg overflow-hidden border border-[#333]">
+                        <img src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=400" class="w-full h-48 object-cover opacity-60">
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="w-12 h-12 bg-[#00ff66] rounded-full flex items-center justify-center pl-1 shadow-lg">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="black"><path d="M8 5v14l11-7z"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="x-card flex flex-col gap-4">
+                    <div class="flex justify-between items-center">
+                        <div class="flex gap-3 items-center">
+                            <div class="w-10 h-10 bg-gray-800 rounded-full border border-gray-600"></div>
+                            <div>
+                                <div class="text-sm font-bold flex items-center gap-1">tk <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg></div>
+                                <div class="text-xs text-gray-500">@heettike · Follow</div>
+                            </div>
+                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                    </div>
+                    <p class="text-sm">gm. <br><br> @noicedotso 🤝 @baseapp <br><br> help the next billion earn onchain.</p>
+                    <a href="https://www.instagram.com/reel/DT5FP1VgYlt/?utm_source=ig_embed&utm_campaign=loading" target="_blank" rel="noopener noreferrer" class="relative block rounded-lg overflow-hidden border border-[#333] bg-gradient-to-br from-[#1f1f1f] via-[#0f0f0f] to-[#050505] group">
+                         <div class="w-full h-48 flex items-center justify-center p-6 text-center">
+                            <div class="space-y-3">
+                                <div class="mx-auto w-14 h-14 rounded-full bg-white/10 backdrop-blur flex items-center justify-center">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white" aria-hidden="true"><path d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H7zm5 2.5a4.5 4.5 0 1 1 0 9a4.5 4.5 0 0 1 0-9zm0 2a2.5 2.5 0 1 0 0 5a2.5 2.5 0 0 0 0-5zm5.75-2.25a1 1 0 1 1 0 2a1 1 0 0 1 0-2z"/></svg>
+                                </div>
+                                <div class="text-sm uppercase tracking-[0.35em] text-gray-400">Instagram Reel</div>
+                                <div class="text-lg font-bold serif-font italic text-white/90">Open the post on Instagram</div>
+                                <div class="text-xs text-gray-500">Autoplay is not supported by Instagram embeds, so this opens the reel directly.</div>
+                            </div>
+                         </div>
+                        <div class="absolute inset-0 bg-white/0 group-hover:bg-white/5 transition-colors"></div>
+                    </a>
+                </div>
+
+                <div class="x-card flex flex-col gap-4">
+                    <div class="flex justify-between items-center">
+                        <div class="flex gap-3 items-center">
+                            <div class="w-10 h-10 bg-gray-800 rounded-full border border-gray-600"></div>
+                            <div>
+                                <div class="text-sm font-bold flex items-center gap-1">tk <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg></div>
+                                <div class="text-xs text-gray-500">@heettike · Follow</div>
+                            </div>
+                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                    </div>
+                    <p class="text-sm">part 3/3. <br><br> earn your first crypto, don't buy it</p>
+                    <div class="relative rounded-lg overflow-hidden border border-[#333] bg-gradient-to-br from-[#003311] to-[#000]">
+                        <img src="https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&q=80&w=400" class="w-full h-48 object-cover opacity-40 grayscale">
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center pl-1">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PROTOCOL SECTION -->
+        <section id="protocol" class="py-32 px-6 flex flex-col items-center max-w-7xl mx-auto">
+            <h2 class="serif-font italic text-[#00ff66] text-5xl md:text-7xl mb-16 text-center">Our protocol</h2>
+            
+            <div class="flex flex-wrap gap-6 w-full mb-8">
+                <div class="protocol-card flex flex-col gap-6">
+                    <span class="text-xs text-gray-500 tracking-widest uppercase">Phase 1</span>
+                    <div class="space-y-2">
+                        <h4 class="text-[#00ffcc] text-2xl font-bold tracking-tight">Scripting.</h4>
+                        <h4 class="text-[#00ffcc] text-2xl font-bold tracking-tight">Storyboarding</h4>
+                        <h4 class="text-[#00ffcc] text-2xl font-bold tracking-tight">everything in between</h4>
+                    </div>
+                </div>
+                <div class="protocol-card flex flex-col gap-6">
+                    <span class="text-xs text-gray-500 tracking-widest uppercase">Phase 2</span>
+                    <div class="space-y-2">
+                        <h4 class="text-[#00ffcc] text-2xl font-bold tracking-tight">Shooting.</h4>
+                        <h4 class="text-[#00ffcc] text-2xl font-bold tracking-tight">Linear edits.</h4>
+                        <h4 class="text-[#00ffcc] text-2xl font-bold tracking-tight">Soundtrack design.</h4>
+                    </div>
+                </div>
+                <div class="protocol-card flex flex-col gap-6">
+                    <span class="text-xs text-gray-500 tracking-widest uppercase">Phase 3</span>
+                    <div class="space-y-2">
+                        <h4 class="text-[#00ffcc] text-2xl font-bold tracking-tight">Finishing touches.</h4>
+                        <h4 class="text-[#00ffcc] text-2xl font-bold tracking-tight">VFX</h4>
+                        <h4 class="text-[#00ffcc] text-2xl font-bold tracking-tight">Subtitles</h4>
+                    </div>
+                </div>
+            </div>
+
+            <button class="  btn-neon p-6 rounded-xl flex items-center justify-center gap-4 text-sm font-bold tracking-[0.2em]">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                BOOK A CALL
+            </button>
+        </section>
+
+        <!-- OUTRO SECTION (Requested from Image Ref) -->
+        <section class="relative  px-6 flex flex-col items-center min-h-screen">
+            <div class="absolute inset-0 ascii-bg opacity-[0.15]">
+                ███████╗██████╗  █████╗ ███╗   ███╗███████╗███████╗██╗      █████╗ ██████╗ 
+                ██╔════╝██╔══██╗██╔══██╗████╗ ████║██╔════╝██╔════╝██║     ██╔══██╗██╔══██╗
+                █████╗  ██████╔╝███████║██╔████╔██║█████╗  ███████╗██║     ███████║██████╔╝
+                ██╔══╝  ██╔══██╗██╔══██║██║╚██╔╝██║██╔══╝  ╚════██║██║     ██╔══██║██╔══██╗
+                ██║     ██║  ██║██║  ██║██║ ╚═╝ ██║███████╗███████║███████╗██║  ██║██████╔╝
+                ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝╚═════╝ 
+            </div>
+
+            <div class="relative z-10 flex flex-col items-center text-center space-y-6">
+                <div class="text-[14px] tracking-widest text-gray-400 flex items-center gap-3">
+                    The creative team behind <div class="noice-badge">NoicE</div> films
+                </div>
+
+                <h2 class="serif-font text-5xl md:text-7xl italic glow-text max-w-4xl leading-tight">
+                    The Coolest Storytelling company on the internet
+                </h2>
+
+                <p class="text-sm md:text-base text-gray-400 max-w-lg tracking-tight">
+                    Crypto Feed deserves taste. And thats exactly why we're here.
+                </p>
+
+                <button class="border-2 border-[#00ff66] text-[#00ff66] px-10 py-3 rounded-lg hover:bg-[#00ff66]/10 transition-all font-bold text-sm tracking-widest shadow-[0_0_15px_rgba(0,255,102,0.3)]">
+                    Book a Call
+                </button>
+            </div>
+
+            <!-- TV Cluster Footer -->
+            <div class="tv-container w-full max-w-6xl mt-20">
+                <div class="tv-stack">
+                    <!-- <div class="tv-slot tv-slot--tiny tv-slot--footer-top-left hidden sm:block opacity-60">
+                        <div class="tv-frame">
+                            <div class="tv-screen">
+                                <iframe class="w-full h-full" src="https://www.youtube.com/embed/9bZkp7q19f0?autoplay=1&mute=1&loop=1&playlist=9bZkp7q19f0&controls=0" frameborder="0"></iframe>
+                            </div>
+                        </div>
+                    </div> -->
+                    <!-- <div class="tv-slot tv-slot--small tv-slot--footer-left-one hidden sm:block opacity-80">
+                        <div class="tv-frame">
+                            <div class="tv-screen">
+                                <iframe class="w-full h-full" src="https://www.youtube.com/embed/tVj0ZTS4WF4?autoplay=1&mute=1&loop=1&playlist=tVj0ZTS4WF4&controls=0" frameborder="0"></iframe>
+                            </div>
+                        </div>
+                    </div> -->
+               <div class="tv-slot tv-slot--small tv-slot--hero-left-one hidden sm:block">
+                        <div class="tv-frame">
+                            <div class="tv-screen">
+                                <iframe class="w-full h-full opacity-80" src="https://www.youtube.com/embed/vDx3w0hehWY?si=hDp0zeMB1a5KHFiF&amp;controls=0&amp;autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=vDx3w0hehWY" frameborder="0"></iframe>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tv-slot tv-slot--medium tv-slot--hero-left-two">
+                        <div class="tv-frame">
+                            <div class="tv-screen">
+                                <iframe class="w-full h-full opacity-80" src="https://www.youtube.com/embed/_FQmB4SIT-k?si=1slQLqgkzSdE4sWS&amp;controls=0&amp;autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=_FQmB4SIT-k" frameborder="0"></iframe>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tv-slot tv-slot--large tv-slot--hero-center">
+                        <div class="tv-frame">
+                            <div class="tv-screen">
+                                <iframe class="w-full h-full" src="https://www.youtube.com/embed/zZHYQR4JWpo?si=X7JCRX90TBbi9N7-&amp;controls=0&amp;autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=zZHYQR4JWpo" allowfullscreen></iframe>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tv-slot tv-slot--medium tv-slot--hero-right-two">
+                        <div class="tv-frame">
+                            <div class="tv-screen">
+                                <iframe class="w-full h-full opacity-80" src="https://www.youtube.com/embed/2y_DvePBpQA?si=_7xCx86gwOMyUbOE&amp;controls=0&amp;autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=2y_DvePBpQA" frameborder="0"></iframe>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tv-slot tv-slot--small tv-slot--hero-right-one hidden sm:block">
+                        <div class="tv-frame">
+                            <div class="tv-screen">
+                                <iframe class="w-full h-full opacity-80" src="https://www.youtube.com/embed/bvkUz9-kmnE?si=oY_aZ7gSsmtUXQmv&amp;controls=0&amp;autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=bvkUz9-kmnE"  frameborder="0"></iframe>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- <div class="tv-slot tv-slot--tiny tv-slot--footer-top-right hidden lg:block opacity-60">
+                        <div class="tv-frame">
+                            <div class="tv-screen">
+                                <iframe class="w-full h-full" src="https://www.youtube.com/embed/jNQXAC9IVRw?autoplay=1&mute=1&loop=1&playlist=jNQXAC9IVRw&controls=0" frameborder="0"></iframe>
+                            </div>
+                        </div>
+                    </div> -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full p-8 flex flex-col md:flex-row justify-between items-center text-[10px] tracking-[0.2em] text-gray-500 border-t border-white/5 bg-black/50">
+        <div class="mb-4 md:mb-0">
+            © FRAMESLAB | 2026 <span class="text-[#00ff66] ml-4">v17.08.2026</span>
+        </div>
+        <div class="flex gap-6 text-[#00ff66]">
+            <a href="#" class="hover:opacity-70 transition-opacity">TWITTER</a>
+            <a href="#" class="hover:opacity-70 transition-opacity">INSTAGRAM</a>
+            <a href="#" class="hover:opacity-70 transition-opacity">YOUTUBE</a>
+        </div>
+    </footer>
 
     <script>
-        let scene, camera, renderer, worldGroup, portals = [];
-        let galaxySpiral, travelSystems = [];
-        let raycaster = new THREE.Raycaster();
-        let mouse = new THREE.Vector2();
-        let intersected = null;
-        let currentWorld = 'VIDEOS';
-        let isWarping = false;
-        let introPlaying = true;
-        let audioUnlocked = false;
-        
-        let isDragging = false;
-        let targetRotationX = 0, targetRotationY = 0;
-        let currentRotationX = 0, currentRotationY = 0;
-        
-        let hoverTimer = null;
-        let currentHoverObject = null;
-
-        let zoomZ = 8000; 
-        const finalZoomY = 650; 
-        const finalZoomZ = 400; 
-        const maxZoomOut = 2000;
-
-        let singularObjects = [];
-        let interactiveList = []; 
-        
-        // Target Video Information
-        const YOUTUBE_ID = '_FQmB4SIT-k';
-        // Changed mute=1 to mute=0 for unmuted audio-visual experience
-        const YOUTUBE_IFRAME_SRC = `https://www.youtube.com/embed/${YOUTUBE_ID}?autoplay=1&mute=0&modestbranding=1&rel=0&controls=1&iv_load_policy=3&fs=1`;
-        const YOUTUBE_THUMBNAIL = `https://img.youtube.com/vi/${YOUTUBE_ID}/maxresdefault.jpg`;
-
-        const init = () => {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 15000);
-            camera.position.set(400, 600, zoomZ); 
-            camera.lookAt(0,0,0);
-
-            renderer = new THREE.WebGLRenderer({ 
-                canvas: document.getElementById('canvas'), 
-                antialias: true, 
-                powerPreference: "high-performance",
-                precision: "mediump"
-            });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-            worldGroup = new THREE.Group();
-            scene.add(worldGroup);
-
-            setupGalaxyStructure(); 
-            setupTravelPathSystems(); 
-            setupStaticBackground(); 
-            setupVideoWorld(); 
-
-            // Gesture to unlock audio context for unmuted playback
-            const unlockAudio = () => {
-                if(audioUnlocked) return;
-                audioUnlocked = true;
-                window.removeEventListener('mousedown', unlockAudio);
-                window.removeEventListener('touchstart', unlockAudio);
-                window.removeEventListener('keydown', unlockAudio);
-            };
-            window.addEventListener('mousedown', unlockAudio);
-            window.addEventListener('touchstart', unlockAudio);
-            window.addEventListener('keydown', unlockAudio);
-
-            window.addEventListener('mousedown', () => isDragging = true);
-            window.addEventListener('mouseup', () => isDragging = false);
-            window.addEventListener('mousemove', onMouseMove);
-            
-            window.addEventListener('wheel', (e) => {
-                if (intersected || isWarping || introPlaying) return;
-                zoomZ += e.deltaY * 0.6;
-                zoomZ = Math.max(400, Math.min(maxZoomOut, zoomZ));
-            });
-            
-            window.addEventListener('resize', onWindowResize);
-            
-            startCinematicJourney();
-            animate();
-        };
-
-        const setupGalaxyStructure = () => {
-            const galaxyGeom = new THREE.BufferGeometry();
-            const pointsCount = 35000; 
-            const positions = new Float32Array(pointsCount * 3);
-            const colors = new Float32Array(pointsCount * 3);
-            for (let i = 0; i < pointsCount; i++) {
-                const i3 = i * 3;
-                const radius = Math.random() * 1200;
-                const spinAngle = radius * 0.12;
-                const branchAngle = (i % 3) * ((Math.PI * 2) / 3);
-                const randomX = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 0.4 * radius;
-                const randomY = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 0.4 * radius;
-                const randomZ = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 0.4 * radius;
-                positions[i3] = Math.cos(branchAngle + spinAngle) * radius + randomX;
-                positions[i3 + 1] = randomY;
-                positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
-                const mixedColor = new THREE.Color(i % 2 === 0 ? '#ff9933' : '#3399ff');
-                colors[i3] = mixedColor.r;
-                colors[i3 + 1] = mixedColor.g;
-                colors[i3 + 2] = mixedColor.b;
-            }
-            galaxyGeom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            galaxyGeom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-            galaxySpiral = new THREE.Points(galaxyGeom, new THREE.PointsMaterial({
-                size: 0.35, vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, opacity: 0.35 
-            }));
-            worldGroup.add(galaxySpiral);
-        };
-
-        const setupTravelPathSystems = () => {
-            const systemCount = 10;
-            for(let i=0; i < systemCount; i++) {
-                const system = new THREE.Group();
-                const sun = new THREE.Mesh(new THREE.SphereGeometry(12, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffaa00 }));
-                system.add(sun);
-                const xSide = (i % 2 === 0 ? 1 : -1) * 600;
-                const zPos = 1200 + (i * 500); 
-                system.position.set(xSide, 0, zPos);
-                scene.add(system);
-                travelSystems.push(system);
-            }
-        };
-
-        const setupStaticBackground = () => {
-            const starGeom = new THREE.BufferGeometry();
-            const starsPos = new Float32Array(8000 * 3); 
-            for(let i=0; i < 8000 * 3; i++) starsPos[i] = (Math.random() - 0.5) * 15000;
-            starGeom.setAttribute('position', new THREE.BufferAttribute(starsPos, 3));
-            scene.add(new THREE.Points(starGeom, new THREE.PointsMaterial({ color: 0xffffff, size: 0.6, transparent: true, opacity: 0.15 })));
-        };
-
-        const startCinematicJourney = () => {
-            const tl = gsap.timeline();
-            tl.to("#loader-line", { width: "100%", duration: 2, ease: "power1.inOut" });
-            tl.to(camera.position, {
-                x: 0, y: finalZoomY, z: finalZoomZ,
-                duration: 8,
-                ease: "expo.inOut",
-                onStart: () => {
-                    document.getElementById('entry-overlay').style.opacity = '0';
-                },
-                onUpdate: () => {
-                    const progress = tl.progress();
-                    if(progress < 0.75) camera.fov = 60 + (progress * 60);
-                    else camera.fov = 120 - ((progress-0.75) * 240);
-                    camera.rotation.z = progress * Math.PI * 2;
-                    camera.lookAt(0, 0, 0);
-                    camera.updateProjectionMatrix();
-                    zoomZ = camera.position.length();
-                },
-                onComplete: () => {
-                    introPlaying = false;
-                    document.getElementById('entry-overlay').style.display = 'none';
-                    travelSystems.forEach((s) => scene.remove(s));
-                    gsap.to(camera.rotation, { z: 0, duration: 1.5 });
-                }
-            }, "-=0.1");
-        };
-
-        const setupVideoWorld = () => {
-            clearWorld();
-            currentWorld = 'VIDEOS';
-            document.getElementById('world-tag').innerText = "Video Universe";
-            
-            createSingularVoid(0, 0, -750, 0x000000, 0xffaa00, true);
-            
-            for(let i=0; i < 35; i++) {
-                const phi = Math.acos(-1 + (2 * i) / 35);
-                const theta = Math.sqrt(35 * Math.PI) * phi;
-                const r = 260 + Math.random() * 80;
-                const px = r * Math.cos(theta) * Math.sin(phi);
-                const py = r * Math.sin(theta) * Math.sin(phi);
-                const pz = r * Math.cos(phi);
-                createPortal(YOUTUBE_IFRAME_SRC, px, py, pz, false, true);
-            }
-            updateInteractiveList();
-        };
-
-        const setupImageWorld = () => {
-            clearWorld();
-            currentWorld = 'IMAGES';
-            document.getElementById('world-tag').innerText = "Image Realm";
-            createSingularVoid(550, 350, -200, 0xffffff, 0x00ffff, false);
-            const imageUrls = ['https://picsum.photos/id/10/800/450','https://picsum.photos/id/20/800/450','https://picsum.photos/id/30/800/450','https://picsum.photos/id/40/800/450'];
-            for(let i=0; i < 35; i++) {
-                const phi = Math.acos(-1 + (2 * i) / 35);
-                const theta = Math.sqrt(35 * Math.PI) * phi;
-                const r = 280 + Math.random() * 100;
-                const px = r * Math.cos(theta) * Math.sin(phi);
-                const py = r * Math.sin(theta) * Math.sin(phi);
-                const pz = r * Math.cos(phi);
-                createPortal(imageUrls[i % 4], px, py, pz, false, false);
-            }
-            updateInteractiveList();
-        };
-
-        const clearWorld = () => {
-            portals.forEach(p => {
-                p.children.forEach(child => {
-                    if(child.geometry) child.geometry.dispose();
-                    if(child.material) {
-                        if(child.material.map) child.material.map.dispose();
-                        child.material.dispose();
-                    }
-                });
-            });
-            singularObjects = []; portals = []; interactiveList = [];
-            const toRemove = [];
-            worldGroup.children.forEach(child => { if (child !== galaxySpiral) toRemove.push(child); });
-            toRemove.forEach(c => worldGroup.remove(c));
-            document.getElementById('iframe-overlay').classList.remove('active');
-            document.getElementById('iframe-overlay').innerHTML = '';
-        };
-
-        const updateInteractiveList = () => { interactiveList = [...singularObjects, ...portals]; };
-
-        const createSingularVoid = (x, y, z, coreColor, diskColor, isBlackHole) => {
-            const group = new THREE.Group();
-            const core = new THREE.Mesh(new THREE.SphereGeometry(18, 32, 32), new THREE.MeshBasicMaterial({ color: coreColor }));
-            const pCount = 3000;
-            const pGeom = new THREE.BufferGeometry();
-            const pPos = new Float32Array(pCount * 3);
-            const pRadii = new Float32Array(pCount);
-            const pSpeeds = new Float32Array(pCount);
-            for(let i=0; i<pCount; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const radius = isBlackHole ? 40 + Math.random() * 180 : 18 + Math.random() * 20;
-                pPos[i*3] = Math.cos(angle) * radius;
-                pPos[i*3+1] = (Math.random() - 0.5) * 5; 
-                pPos[i*3+2] = Math.sin(angle) * radius;
-                pRadii[i] = radius;
-                pSpeeds[i] = 0.3 + Math.random() * 0.7; 
-            }
-            pGeom.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
-            const pMat = new THREE.PointsMaterial({ color: diskColor, size: 0.8, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending });
-            const particles = new THREE.Points(pGeom, pMat);
-            group.add(core, particles);
-            group.position.set(x, y, z);
-            group.userData = { isSingularity: true, isBlackHole, particles, pRadii, pSpeeds, originalPos: new THREE.Vector3(x,y,z) };
-            worldGroup.add(group);
-            singularObjects.push(group);
-        };
-
-        const createPortal = (source, x, y, z, isVideo, isIframe) => {
-            let texture;
-            if(isIframe) {
-                texture = new THREE.TextureLoader().load(YOUTUBE_THUMBNAIL);
-            } else { 
-                texture = new THREE.TextureLoader().load(source); 
-            }
-            
-            const group = new THREE.Group();
-            const screen = new THREE.Mesh(new THREE.PlaneGeometry(32, 18), new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, color: 0xffffff }));
-            const frame = new THREE.Mesh(new THREE.PlaneGeometry(33, 19), new THREE.MeshBasicMaterial({ color: isIframe ? 0xf59e0b : 0xffffff, transparent: true, opacity: 0.1 }));
-            frame.position.z = -0.15;
-            group.add(screen, frame);
-            group.position.set(x, y, z);
-            group.lookAt(0, 0, 0);
-            group.userData = { originalPos: new THREE.Vector3(x, y, z), originalRot: group.rotation.clone(), isPortal: true, isIframe: isIframe, iframeSrc: source };
-            worldGroup.add(group);
-            portals.push(group);
-        };
-
-        function onMouseMove(e) {
-            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-            if (isDragging && !introPlaying && !isWarping) { targetRotationY += e.movementX * 0.003; targetRotationX += e.movementY * 0.003; }
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            if(!introPlaying) {
-                if (!isWarping) {
-                    currentRotationX += (targetRotationX - currentRotationX) * 0.05;
-                    currentRotationY += (targetRotationY - currentRotationY) * 0.05;
-                    worldGroup.rotation.x = currentRotationX;
-                    worldGroup.rotation.y = currentRotationY;
-                }
-                const currentDist = camera.position.length();
-                camera.position.setLength(currentDist + (zoomZ - currentDist) * 0.05);
-            }
-
-            if(galaxySpiral) galaxySpiral.rotation.y += 0.0004;
-
-            singularObjects.forEach(obj => {
-                const isBH = obj.userData.isBlackHole;
-                const p = obj.userData.particles;
-                const pos = p.geometry.attributes.position.array;
-                const radii = obj.userData.pRadii;
-                const speeds = obj.userData.pSpeeds;
-                for(let i=0; i < radii.length; i++) {
-                    const angle = Math.atan2(pos[i*3+2], pos[i*3]);
-                    if(isBH) { radii[i] -= speeds[i] * 0.5; if(radii[i] < 19) radii[i] = 180 + Math.random() * 40; }
-                    else { radii[i] += speeds[i] * 0.7; if(radii[i] > 200) radii[i] = 19 + Math.random() * 10; }
-                    pos[i*3] = Math.cos(angle) * radii[i];
-                    pos[i*3+1] = (Math.random() - 0.5) * 2; 
-                    pos[i*3+2] = Math.sin(angle) * radii[i];
-                }
-                p.geometry.attributes.position.needsUpdate = true;
-            });
-            
-            if(!isWarping && !introPlaying) {
-                raycaster.setFromCamera(mouse, camera);
-                const intersects = raycaster.intersectObjects(interactiveList, true);
-                let found = null;
-                if(intersects.length > 0) {
-                    let obj = intersects[0].object;
-                    while(obj.parent && obj.parent !== worldGroup) obj = obj.parent;
-                    found = obj;
-                }
-                
-                if (intersected) {
-                    updateFocusedPosition(intersected);
-                    const mouseDist = Math.sqrt(mouse.x*mouse.x + mouse.y*mouse.y);
-                    if((!found && mouseDist > 0.72) || (found && found !== intersected && (found.userData.isPortal || found.userData.isSingularity))) {
-                        resetPortal(intersected); intersected = null; currentHoverObject = null; clearTimeout(hoverTimer);
-                    }
-                } else if (found && (found.userData.isPortal || found.userData.isSingularity)) {
-                    if (currentHoverObject !== found) {
-                        clearTimeout(hoverTimer);
-                        currentHoverObject = found;
-                        hoverTimer = setTimeout(() => {
-                            if (currentHoverObject === found) {
-                                if(found.userData.isSingularity) warpTransition(found.userData.isBlackHole); 
-                                else { intersected = found; focusPortal(intersected); }
-                            }
-                        }, 600); 
-                    }
-                } else if (currentHoverObject !== null) {
-                    clearTimeout(hoverTimer); currentHoverObject = null;
-                }
-            }
-            renderer.render(scene, camera);
-        }
-
-        function updateFocusedPosition(p) {
-            const targetDist = 36; 
-            const cameraDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-            const targetWorldPos = camera.position.clone().add(cameraDir.multiplyScalar(targetDist));
-            const targetLocalPos = worldGroup.worldToLocal(targetWorldPos);
-            const targetLocalRot = new THREE.Euler().setFromQuaternion(worldGroup.quaternion.clone().invert().multiply(camera.quaternion));
-            p.position.lerp(targetLocalPos, 0.15);
-            p.quaternion.slerp(new THREE.Quaternion().setFromEuler(targetLocalRot), 0.15);
-        }
-
-        function focusPortal(p) {
-            if(p.userData.isIframe) {
-                const overlay = document.getElementById('iframe-overlay');
-                // The iframe string already contains autoplay=1 and mute=0 in the source constant
-                overlay.innerHTML = `<iframe width="100%" height="100%" src="${p.userData.iframeSrc}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
-                overlay.classList.add('active');
-            }
-            document.getElementById('focus-mask').style.opacity = '1';
-            gsap.to(p.scale, { x: 1.4, y: 1.4, z: 1.4, duration: 0.6, ease: "power2.out" });
-        }
-
-        function resetPortal(p) {
-            if(p.userData.isIframe) {
-                const overlay = document.getElementById('iframe-overlay');
-                overlay.classList.remove('active');
-                setTimeout(() => overlay.innerHTML = '', 500);
-            }
-            document.getElementById('focus-mask').style.opacity = '0';
-            gsap.to(p.position, { x: p.userData.originalPos.x, y: p.userData.originalPos.y, z: p.userData.originalPos.z, duration: 0.8, ease: "power3.out" });
-            gsap.to(p.rotation, { x: p.userData.originalRot.x, y: p.userData.originalRot.y, z: p.userData.originalRot.z, duration: 0.8 });
-            gsap.to(p.scale, { x: 1, y: 1, z: 1, duration: 0.8 });
-        }
-
-        const warpTransition = (toImageWorld) => {
-            if(isWarping) return;
-            isWarping = true;
-            intersected = null; 
-            currentHoverObject = null;
-            clearTimeout(hoverTimer);
-
-            const tl = gsap.timeline({ onComplete: () => {
-                if(toImageWorld) setupImageWorld(); else setupVideoWorld();
-                camera.position.set(0, finalZoomY, finalZoomZ);
-                camera.lookAt(0,0,0);
-                zoomZ = camera.position.length();
-                targetRotationX = 0; targetRotationY = 0; currentRotationX = 0; currentRotationY = 0;
-                worldGroup.rotation.set(0,0,0);
-                setTimeout(() => { isWarping = false; }, 800); 
-                gsap.to("#warp-overlay", { opacity: 0, duration: 1.0, ease: "power1.inOut" });
-            }});
-
-            tl.to("#warp-overlay", { opacity: 1, duration: 0.8, ease: "power2.inOut" });
-            tl.to(camera.position, { x: 0, y: 0, z: 0, duration: 1.2, ease: "power4.in" }, 0);
-            tl.to(camera, { fov: 150, duration: 1.2, ease: "power4.in", onUpdate: () => camera.updateProjectionMatrix() }, 0);
-            tl.set(camera, { fov: 60, onUpdate: () => camera.updateProjectionMatrix() });
-        };
-
-        window.onload = init;
+        // Interactive Glow Effect for Mouse
+        document.addEventListener('mousemove', (e) => {
+            const x = (e.clientX / window.innerWidth) * 100;
+            const y = (e.clientY / window.innerHeight) * 100;
+            document.body.style.backgroundImage = `radial-gradient(circle at ${x}% ${y}%, rgba(0, 255, 102, 0.03) 0%, transparent 60%)`;
+        });
     </script>
 </body>
 </html>
